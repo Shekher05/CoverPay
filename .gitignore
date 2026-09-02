@@ -34,3 +34,11 @@ fraud_project_plan.md
 fraud_prd.md
 CLAUDE.md
 ieee-fraud-detection/
+
+# Local database
+*.db
+*.sqlite3
+
+# Synthetic data (generated, reproducible from a seed)
+data/synthetic/
+/.claude/
