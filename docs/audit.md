@@ -14,10 +14,14 @@ PR-AUC is the headline metric. At this base rate a model that predicts 'never fr
 
 - `TransactionDT` is a **seconds offset**, not a unix timestamp: min=86,400 (day 1.0), max=15,811,131 (day 183.0)
 - Span: **182 days**
-- Chronological 80%/20% split at `TransactionDT = 12,192,854` (day 141.1)
-- Fraud rate: train **3.51%** vs validation **3.44%**
+- Chronological 60%/20%/20% split into train / validation / test
+  - train ends at `TransactionDT = 8,745,782` (day 101.2)
+  - validation ends at `TransactionDT = 12,192,854` (day 141.1)
+- Fraud rate: train **3.38%**, validation **3.90%**, test **3.44%**
 
 Split by time, never randomly. Card and address history bleeds across a random split and inflates every reported number.
+
+Three sets, not two, and the reason is narrow: validation is spent on early stopping and on choosing the advisory thresholds, so anything measured on it has already been optimised against and reads high. Test is never looked at until the model and the thresholds are frozen. Every headline number in `docs/metrics.md` comes from test.
 
 ## Amount
 

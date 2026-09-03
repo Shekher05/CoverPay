@@ -33,7 +33,9 @@ fraud_intelligence_engineering_design.md
 fraud_project_plan.md
 fraud_prd.md
 CLAUDE.md
+coverpay.db-shm
 ieee-fraud-detection/
+coverpay.db-wal
 
 # Local database
 *.db
