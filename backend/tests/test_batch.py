@@ -139,6 +139,45 @@ def test_upload_csv_happy_path(client):
     assert len(body["riskiest_transactions"]) <= 10
 
 
+def test_upload_csv_actually_streams_in_chunks(client, monkeypatch):
+    """A file larger than one CSV_CHUNK_SIZE must be scored across multiple
+    chunks, not read/scored in a single pass - pin this down by spying on
+    score_batch rather than trusting the streaming rewrite by inspection."""
+    from api import main as main_module
+
+    n = main_module.CSV_CHUNK_SIZE * 2 + main_module.CSV_CHUNK_SIZE // 4
+    df = _frame(n)
+    csv = df.to_csv(index=False).encode()
+
+    calls = []
+    real_score_batch = main_module.score_batch
+
+    def spy(chunk, **kwargs):
+        calls.append(len(chunk))
+        return real_score_batch(chunk, **kwargs)
+
+    monkeypatch.setattr(main_module, "score_batch", spy)
+
+    body = _upload(client, csv).json()
+
+    assert len(calls) == 3, f"expected 3 chunks, scored {len(calls)}: {calls}"
+    assert calls[0] == calls[1] == main_module.CSV_CHUNK_SIZE
+    assert calls[2] == n - 2 * main_module.CSV_CHUNK_SIZE
+    assert sum(calls) == n
+    assert body["total_transactions"] == n
+
+    # Cross-chunk aggregation must match a single unchunked pass.
+    direct = real_score_batch(df, max_rows=n)
+    direct_flagged = sum(1 for a in direct if a.recommendation != "ALLOW")
+    assert body["possible_attacks_flagged"] == direct_flagged
+
+    direct_top10 = sorted((a.risk_score for a in direct), reverse=True)[:10]
+    reported_top10 = sorted(
+        (a["risk_score"] for a in body["riskiest_transactions"]), reverse=True
+    )
+    assert reported_top10 == pytest.approx(direct_top10)
+
+
 def test_upload_rejects_a_non_csv_name(client):
     assert _upload(client, b"x,y\n1,2\n", name="notes.txt").status_code == 400
 
@@ -147,9 +186,13 @@ def test_upload_rejects_an_empty_file(client):
     assert _upload(client, b"").status_code == 400
 
 
-def test_upload_rejects_an_oversized_file(client):
-    big = b"TransactionID,TransactionAmt,TransactionDT\n" + b"1,2,3\n" * 2_000_000
-    assert len(big) > 10 * 1024 * 1024
+def test_upload_rejects_an_oversized_file(client, monkeypatch):
+    """MAX_CSV_BYTES is 200 MB in production; shrink it here so the test
+    rejects on file.size without actually generating and scoring a
+    multi-hundred-MB payload."""
+    monkeypatch.setattr("api.main.MAX_CSV_BYTES", 100)
+    big = b"TransactionID,TransactionAmt,TransactionDT\n" + b"1,2,3\n" * 20
+    assert len(big) > 100
     assert _upload(client, big).status_code == 413
 
 
@@ -172,7 +215,7 @@ def test_upload_does_not_leak_internal_error_text(client):
 
 
 def test_upload_reports_503_when_the_model_is_missing(client, monkeypatch):
-    def unavailable(_df):
+    def unavailable(_df, **_kwargs):
         raise ModelUnavailable("artifacts missing")
 
     monkeypatch.setattr("api.main.score_batch", unavailable)

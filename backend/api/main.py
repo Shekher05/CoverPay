@@ -6,7 +6,6 @@ Every recommendation is advisory. This service never blocks a payment.
 """
 from __future__ import annotations
 
-import io
 import logging
 import math
 from contextlib import asynccontextmanager
@@ -36,14 +35,19 @@ from ml.inference import ModelUnavailable, RiskAssessment, get_model, score, sco
 
 log = logging.getLogger(__name__)
 
-# A CSV upload is read fully into memory before parsing, so it needs a hard
-# ceiling. 10 MB is well above any demo batch and far below what would pressure
-# a small container. The row cap is a second rail: a very narrow CSV can pack a
-# lot of rows into 10 MB, and score_batch's own limit would surface as a
-# confusing 422 rather than "too large".
+# A CSV upload is streamed in bounded-memory chunks rather than loaded whole,
+# so a large file costs one chunk of RAM instead of the whole DataFrame - but
+# it still needs a hard ceiling, since even a stream has to be read and scored
+# in full. 200 MB is well above any demo batch and far below what would
+# pressure a small Render container. The row cap is a second rail: a very
+# narrow CSV can pack a lot of rows into 200 MB, and score_batch's own limit
+# would surface as a confusing 422 rather than "too large".
 MAX_CSV_BYTES = 200 * 1024 * 1024
 MAX_CSV_ROWS = 2_000_000
-
+# Rows per chunk handed to pandas/score_batch at a time - small enough that a
+# chunk's DataFrame, feature matrix, and SHAP contributions stay cheap in RAM
+# regardless of how big the overall upload is.
+CSV_CHUNK_SIZE = 2_000
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -267,67 +271,86 @@ def upload_csv_batch(file: UploadFile = File(...)) -> BatchAnalysisOut:
     if not filename.lower().endswith(".csv"):
         raise HTTPException(status_code=400, detail="File must be a .csv file")
 
-    # Reject an oversized upload before pulling it all into memory. `file.size`
-    # comes from the multipart part; the capped read is the real guard when it
-    # is absent or understated.
+    # Reject an oversized upload before streaming it. `file.size` comes from
+    # the multipart part; it is the only size signal available before reading,
+    # since the file is never buffered whole in memory.
     if file.size is not None and file.size > MAX_CSV_BYTES:
         raise HTTPException(status_code=413, detail=f"CSV exceeds the {MAX_CSV_BYTES // (1024 * 1024)} MB limit")
-    content = file.file.read(MAX_CSV_BYTES + 1)
-    if len(content) > MAX_CSV_BYTES:
-        raise HTTPException(status_code=413, detail=f"CSV exceeds the {MAX_CSV_BYTES // (1024 * 1024)} MB limit")
+    file.file.seek(0)
 
-    try:
-        df = pd.read_csv(io.BytesIO(content))
-    except (
-        pd.errors.ParserError,
-        pd.errors.EmptyDataError,
-        ValueError,
-        UnicodeDecodeError,
-    ) as exc:
-        # The real parser error names the caller's file contents; log it, do not
-        # return it.
+    def _parse_error(exc: Exception) -> HTTPException:
+        # The real parser error names the caller's file contents; log it, do
+        # not return it.
         log.info("Rejected CSV upload %r: %s", file.filename, exc)
-        raise HTTPException(
-            status_code=400, detail="Could not parse the file as CSV"
-        ) from exc
+        return HTTPException(status_code=400, detail="Could not parse the file as CSV")
 
-    if df.empty:
-        raise HTTPException(status_code=400, detail="CSV file has no rows")
-    if len(df) > MAX_CSV_ROWS:
-        raise HTTPException(
-            status_code=413, detail=f"CSV has more than {MAX_CSV_ROWS:,} rows"
-        )
-
+    parse_errors = (pd.errors.ParserError, pd.errors.EmptyDataError, ValueError, UnicodeDecodeError)
     try:
-        assessments = score_batch(df)
-    except ModelUnavailable as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
-    except (KeyError, ValueError) as exc:
-        # A CSV missing the columns the feature pipeline needs is the caller's
-        # to fix, but the exception text can echo their data - keep it in the log.
-        log.info("CSV upload %r could not be scored: %s", file.filename, exc)
-        raise HTTPException(
-            status_code=422, detail="CSV is missing columns the model needs"
-        ) from exc
+        chunks = pd.read_csv(file.file, chunksize=CSV_CHUNK_SIZE, low_memory=False)
+    except parse_errors as exc:
+        raise _parse_error(exc) from exc
 
-    total = len(assessments)
-    flagged = [a for a in assessments if a.recommendation != "ALLOW"]
-    reviews = [a for a in assessments if a.recommendation == "REVIEW"]
-    blocks = [a for a in assessments if a.recommendation == "BLOCK"]
+    total = 0
+    flagged = 0
+    reviews = 0
+    blocks = 0
+    total_flagged_val = 0.0
+    riskiest: list[RiskAssessment] = []
 
-    total_flagged_val = sum(a.amount for a in flagged if not math.isnan(a.amount))
-    high_risk_pct = round((len(flagged) / total) * 100, 1) if total > 0 else 0.0
+    while True:
+        try:
+            chunk = next(chunks)
+        except StopIteration:
+            break
+        except parse_errors as exc:
+            raise _parse_error(exc) from exc
 
-    sorted_riskiest = sorted(assessments, key=lambda a: a.risk_score, reverse=True)[:10]
+        total += len(chunk)
+        if total > MAX_CSV_ROWS:
+            raise HTTPException(
+                status_code=413, detail=f"CSV has more than {MAX_CSV_ROWS:,} rows"
+            )
+
+        try:
+            assessments = score_batch(chunk, max_rows=CSV_CHUNK_SIZE)
+        except ModelUnavailable as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        except (KeyError, ValueError) as exc:
+            # A CSV missing the columns the feature pipeline needs is the
+            # caller's to fix, but the exception text can echo their data -
+            # keep it in the log.
+            log.info("CSV upload %r could not be scored: %s", file.filename, exc)
+            raise HTTPException(
+                status_code=422, detail="CSV is missing columns the model needs"
+            ) from exc
+
+        for a in assessments:
+            if a.recommendation != "ALLOW":
+                flagged += 1
+                if not math.isnan(a.amount):
+                    total_flagged_val += a.amount
+            if a.recommendation == "REVIEW":
+                reviews += 1
+            elif a.recommendation == "BLOCK":
+                blocks += 1
+
+        # Keep only the global top 10 riskiest seen so far - never hold every
+        # assessment for the whole file in memory at once.
+        riskiest = sorted(riskiest + assessments, key=lambda a: a.risk_score, reverse=True)[:10]
+
+    if total == 0:
+        raise HTTPException(status_code=400, detail="CSV file has no rows")
+
+    high_risk_pct = round((flagged / total) * 100, 1) if total > 0 else 0.0
 
     return BatchAnalysisOut(
         filename=filename,
         total_transactions=total,
-        possible_attacks_flagged=len(flagged),
-        review_recommended=len(reviews),
-        block_recommended=len(blocks),
+        possible_attacks_flagged=flagged,
+        review_recommended=reviews,
+        block_recommended=blocks,
         high_risk_percentage=high_risk_pct,
         total_value_flagged=round(total_flagged_val, 2),
-        riskiest_transactions=[_to_response(a, a.transaction_id) for a in sorted_riskiest],
+        riskiest_transactions=[_to_response(a, a.transaction_id) for a in riskiest],
     )
 
