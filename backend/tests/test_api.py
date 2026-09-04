@@ -84,6 +84,13 @@ def test_unknown_transaction_is_404(client):
     assert client.get("/transactions/does-not-exist").status_code == 404
 
 
+def test_responses_carry_security_headers(client):
+    h = client.get("/health").headers
+    assert h["x-content-type-options"] == "nosniff"
+    assert h["x-frame-options"] == "DENY"
+    assert h["referrer-policy"] == "no-referrer"
+
+
 @pytest.mark.parametrize(
     "payload,reason",
     [

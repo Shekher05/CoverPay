@@ -83,6 +83,21 @@ app.add_middleware(
 app.include_router(dashboard.router)
 
 
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    """Baseline hardening headers on every response. The API returns only JSON,
+    so it is never a framing or script-execution surface itself - these matter
+    for the error pages, /docs, and defence in depth. A strict CSP is set on the
+    frontend document (frontend/index.html), not here, since /docs needs its own.
+    """
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "no-referrer")
+    response.headers.setdefault("Cross-Origin-Opener-Policy", "same-origin")
+    return response
+
+
 @app.exception_handler(Exception)
 async def unhandled(request: Request, exc: Exception) -> JSONResponse:
     """Log the detail, return none of it - internals are not the caller's."""
