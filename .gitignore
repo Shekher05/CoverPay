@@ -53,8 +53,8 @@ CLAUDE.md
 coverpay.db-shm
 ieee-fraud-detection/
 coverpay.db-wal
-DEPLOY.md
-backend\.python-version
+
+
 # Local database
 *.db
 *.sqlite3
