@@ -70,8 +70,32 @@ class _FixedWindow:
 _limiter = _FixedWindow(settings.rate_limit_per_minute)
 
 
+def _client_ip(request: Request) -> str:
+    """The caller's real IP.
+
+    Behind a reverse proxy (every PaaS: Render, Railway, Fly, nginx) the socket
+    peer is the proxy, so `request.client.host` is one shared value for every
+    visitor - which would put the whole site in a single rate-limit bucket. The
+    proxy forwards the original client as the left-most entry of
+    `X-Forwarded-For`, so prefer that.
+
+    ponytail: X-Forwarded-For is client-set and only trustworthy because a proxy
+    we control overwrites/prepends it. A caller hitting the app directly (no
+    proxy) could spoof it to dodge their own limit - acceptable here, since the
+    limiter is a courtesy throttle and real spend protection is API_KEY plus the
+    provider-side quota. If the app is ever exposed with no proxy in front, key
+    on request.client.host only.
+    """
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        first = forwarded.split(",")[0].strip()
+        if first:
+            return first
+    return request.client.host if request.client else "unknown"
+
+
 def rate_limit(request: Request, x_api_key: str | None = Header(default=None)) -> None:
     """FastAPI dependency for the expensive endpoints (assistant, CSV upload).
-    Counts against the API key when present, else the client host."""
-    caller = x_api_key or (request.client.host if request.client else "unknown")
+    Counts against the API key when present, else the caller's real IP."""
+    caller = x_api_key or _client_ip(request)
     _limiter.check(caller)

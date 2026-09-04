@@ -91,6 +91,21 @@ def test_responses_carry_security_headers(client):
     assert h["referrer-policy"] == "no-referrer"
 
 
+def test_client_ip_keys_on_forwarded_for():
+    """Rate limiting must bucket per real visitor, not per shared proxy IP."""
+    from api.auth import _client_ip
+
+    class Req:
+        def __init__(self, headers, host):
+            self.headers = headers
+            self.client = type("C", (), {"host": host})()
+
+    # Proxy present: the left-most X-Forwarded-For entry wins over the peer.
+    assert _client_ip(Req({"x-forwarded-for": "203.0.113.7, 10.0.0.1"}, "10.0.0.1")) == "203.0.113.7"
+    # No proxy: fall back to the socket peer.
+    assert _client_ip(Req({}, "198.51.100.2")) == "198.51.100.2"
+
+
 @pytest.mark.parametrize(
     "payload,reason",
     [

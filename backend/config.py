@@ -46,7 +46,8 @@ class Settings(BaseSettings):
     api_key: str | None = None
 
     # Fixed-window rate limit for the expensive endpoints (assistant, CSV
-    # upload), counted per API key or, failing that, per client host.
+    # upload), counted per API key or, failing that, per client IP (the
+    # left-most X-Forwarded-For entry behind a proxy, else the socket peer).
     # ponytail: in-process fixed window; resets on restart and is not shared
     # across workers. Move to a shared store (Redis) or a gateway limiter if
     # the service is ever run multi-process.
