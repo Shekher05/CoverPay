@@ -41,8 +41,8 @@ log = logging.getLogger(__name__)
 # a small container. The row cap is a second rail: a very narrow CSV can pack a
 # lot of rows into 10 MB, and score_batch's own limit would surface as a
 # confusing 422 rather than "too large".
-MAX_CSV_BYTES = 10 * 1024 * 1024
-MAX_CSV_ROWS = 200_000
+MAX_CSV_BYTES = 200 * 1024 * 1024
+MAX_CSV_ROWS = 2_000_000
 
 
 @asynccontextmanager

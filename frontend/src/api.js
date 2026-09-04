@@ -57,7 +57,7 @@ async function handleResponse(response, path) {
     }
     if (response.status === 413) {
       throw new Error(
-        errorDetail || "Payload too large. CSV files must be under 10 MB and 200,000 rows."
+        errorDetail || "Payload too large. CSV files must be under 200 MB and 2,000,000 rows."
       );
     }
     if (response.status === 422) {

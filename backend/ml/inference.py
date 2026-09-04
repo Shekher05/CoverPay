@@ -132,7 +132,7 @@ def score(transaction: dict | pd.DataFrame) -> RiskAssessment:
 
 
 def score_batch(
-    df: pd.DataFrame, max_rows: int = 200_000, shap_top_n: int = 50
+    df: pd.DataFrame, max_rows: int = 2_000_000, shap_top_n: int = 50
 ) -> list[RiskAssessment]:
     """Score every row of a DataFrame of transactions.
 
