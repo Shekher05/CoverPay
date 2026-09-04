@@ -6,6 +6,11 @@ attacks on a merchant, and answers merchant questions in plain language.
 
 Every recommendation is **advisory**. The platform never blocks a payment.
 
+**Live demo:** <https://coverpay-web.onrender.com> — API at
+`https://coverpay-api.onrender.com` (`/health`; `/docs` is disabled in
+production). Free-tier Render, so read
+[Size & data limits](#size--data-limits) before throwing a real dataset at it.
+
 ---
 
 ## What you need to provide
@@ -211,6 +216,46 @@ They are not interchangeable, and the measurements show it: on the synthetic
 evaluation the incident engine catches 100% of the coordinated spikes that the
 behaviour engine sees 8% of, and misses 100% of the account takeovers that only
 the behaviour engine sees.
+
+---
+
+## Size & data limits
+
+The Render **free** tier (what <https://coverpay-web.onrender.com> runs on) has a
+512 MB RAM ceiling on the API service and no persistent disk, so hard limits are
+enforced before anything is read into memory rather than relying on the box to
+cope.
+
+| Limit | Value | Where | Why |
+|---|---|---|---|
+| CSV upload size | **200 MB** | `POST /transactions/upload-csv` (`MAX_CSV_BYTES`, `backend/api/main.py`) | Rejected with `413` from the declared multipart size, before the file is read. |
+| CSV upload rows | **2,000,000 rows** | same endpoint (`MAX_CSV_ROWS`) | A narrow CSV can pack many rows into 200 MB; this is the second rail. |
+| CSV streaming chunk | 2,000 rows at a time | `CSV_CHUNK_SIZE` | The file is never loaded whole — it's parsed and scored in bounded-memory chunks, so RAM cost is one chunk, not the whole upload. |
+| Single-transaction payload | **600 fields** | `POST /transactions/score` (`MAX_FIELDS`, `backend/api/schemas.py`) | Caps a pathological/malicious payload; the model itself uses ~270 features. |
+| Requests per visitor | **30/minute** | `RATE_LIMIT_PER_MINUTE` | Applies to scoring, CSV upload, and the AI assistant. Keyed on real client IP. |
+| Assistant calls | OpenRouter's free-model daily cap (50–1000/day) | `OPENROUTER_MODEL` | Past the cap the assistant returns `503`; scoring and the dashboard are unaffected. |
+
+**Why large data doesn't work on the deployed instance, even under those caps:**
+
+- **No worker headroom.** The service runs `--workers 1` on a free instance (the
+  rate limiter and model cache are per-process), so one big upload blocks every
+  other visitor until it finishes.
+- **Cold starts.** A free web service sleeps after 15 minutes idle; the first
+  request after that waits ~40–60s while it wakes and reloads the model —
+  budget for that before a large batch, not during it.
+- **The 1.35 GB IEEE-CIS training dataset is never deployed.** Only the ~9 MB
+  trained model artifacts (`models/fraud_xgb.json`, `models/feature_spec.json`)
+  ship to Render. Training and database seeding are run from a local machine
+  against Render's database — see `DEPLOY.md` step 5 — not on the server itself.
+- **Free Postgres expires after ~90 days** and has its own free-tier row/storage
+  ceiling; it holds simulated demo traffic, not a data warehouse. Re-seed via
+  `simulator.feed` after renewal, don't accumulate large uploads into it.
+
+None of these are model limits — `MAX_CSV_BYTES`/`MAX_CSV_ROWS` can be raised
+freely (and the code paths already stream, so they'd work) on a paid Render plan
+with more RAM and multiple workers. On the free tier they exist specifically so
+an oversized upload fails fast with a clear `413` instead of taking the service
+down for everyone else.
 
 ---
 
