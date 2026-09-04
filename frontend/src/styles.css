@@ -45,94 +45,107 @@
 :root {
   color-scheme: light;
 
-  /* --- neutral ramp: warm, single family, no pure black or white ink --- */
-  --plane: #f2f1ee;
-  --surface: #fbfaf8;
+  /* --- neutral ramp: operational warm-gray palette --- */
+  --plane: #f2f0ea;
+  --surface: #f9f8f5;
   --surface-raised: #ffffff;
+  --surface-subtle: #eceae3;
 
-  --ink: #171614;
-  --ink-secondary: #56534d;
-  --ink-muted: #8a867e;
+  --ink: #181715;
+  --ink-secondary: #58554f;
+  --ink-muted: #7f7b73;
 
-  --rule: #e4e2dc;
-  --rule-strong: #c9c6bd;
+  --rule: #dedbd2;
+  --rule-strong: #c2beaf;
+  --rule-focus: #181715;
 
-  /* --- categorical slots 1-3, validated as a set --- */
-  --series-1: #2a78d6; /* model */
-  --series-2: #eb6834; /* behaviour */
-  --series-3: #1baf7a; /* incident */
+  /* --- semantic categorical slots (defense-only signals) --- */
+  --series-1: #1f6feb; /* Transaction Model (Blue) */
+  --series-2: #d95d1e; /* Behaviour Engine (Orange) */
+  --series-3: #18865a; /* Incident Engine (Green) */
 
-  /* One accent for the whole interface. It is the model series on purpose:
-     the model is the primary signal, so primary emphasis borrows its colour
-     instead of introducing a fourth hue nobody can name. */
   --accent: var(--series-1);
-  --accent-wash: rgb(42 120 214 / 0.08);
+  --accent-wash: #e8f0fe;
 
-  /* --- status: fixed, never themed, always beside a label --- */
-  --good: #0ca30c;
-  --warning: #fab219;
-  --serious: #ec835a;
-  --critical: #d03b3b;
+  /* --- status tokens (purely informational/advisory, never decorative) --- */
+  --good: #1a7f37;
+  --warning: #b06500;
+  --serious: #c04515;
+  --critical: #cf222e;
 
-  /* --- type --- */
-  --font: "Geist Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --mono: "Geist Mono Variable", ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* --- professional high-density typography (strictly NO Geist, Inter, or Space Grotesk) --- */
+  --font: "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  --mono: "Consolas", "SFMono-Regular", "Liberation Mono", Menlo, Courier, monospace;
 
-  /* --- shape lock: three radii, no others --- */
-  --r-panel: 10px;
-  --r-mark: 6px;
-  --r-pill: 999px;
+  /* --- structural corner radii (restrained, no excessive rounded cards) --- */
+  --r-panel: 3px;
+  --r-mark: 2px;
+  --r-pill: 3px;
 
-  /* --- depth: tinted to the plane, layered, never pure black --- */
-  --shadow-raised: 0 1px 2px rgb(28 26 22 / 0.05), 0 10px 30px -10px rgb(28 26 22 / 0.16);
-  --scrim: linear-gradient(to bottom, rgb(242 241 238 / 0.9), rgb(242 241 238 / 0));
+  /* --- surface boundary definition (borders & dividers over drop shadows) --- */
+  --shadow-raised: none;
+  --scrim: none;
 
-  /* --- motion: one curve --- */
-  --ease: cubic-bezier(0.32, 0.72, 0, 1);
-  --fast: 160ms;
-  --slow: 420ms;
+  /* --- motion: subtle, utilitarian transitions --- */
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --fast: 120ms;
+  --slow: 200ms;
 
   --gap: 16px;
 }
 
-/* The dark ramp redefines tokens only. Every colour above has its definition
-   on bare :root, so a token can never exist only inside a media query. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --plane: #0c0c0b;
-    --surface: #151513;
-    --surface-raised: #1d1d1a;
-    --ink: #f5f4f1;
-    --ink-secondary: #b3afa6;
-    --ink-muted: #837f77;
-    --rule: #262523;
-    --rule-strong: #3a3835;
-    --series-1: #3987e5;
-    --series-2: #d95926;
-    --series-3: #199e70;
-    --accent-wash: rgb(57 135 229 / 0.14);
-    --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.5), 0 12px 34px -10px rgb(0 0 0 / 0.6);
-    --scrim: linear-gradient(to bottom, rgb(12 12 11 / 0.9), rgb(12 12 11 / 0));
+    --plane: #111110;
+    --surface: #181816;
+    --surface-raised: #20201d;
+    --surface-subtle: #141412;
+
+    --ink: #eeece8;
+    --ink-secondary: #aaa79e;
+    --ink-muted: #78756e;
+
+    --rule: #2a2a26;
+    --rule-strong: #403f39;
+    --rule-focus: #eeece8;
+
+    --series-1: #388bfd;
+    --series-2: #e36a2b;
+    --series-3: #2ea043;
+    --accent-wash: #17263c;
+
+    --good: #3fb950;
+    --warning: #d29922;
+    --serious: #f0883e;
+    --critical: #f85149;
   }
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --plane: #0c0c0b;
-  --surface: #151513;
-  --surface-raised: #1d1d1a;
-  --ink: #f5f4f1;
-  --ink-secondary: #b3afa6;
-  --ink-muted: #837f77;
-  --rule: #262523;
-  --rule-strong: #3a3835;
-  --series-1: #3987e5;
-  --series-2: #d95926;
-  --series-3: #199e70;
-  --accent-wash: rgb(57 135 229 / 0.14);
-  --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.5), 0 12px 34px -10px rgb(0 0 0 / 0.6);
-  --scrim: linear-gradient(to bottom, rgb(12 12 11 / 0.9), rgb(12 12 11 / 0));
+  --plane: #111110;
+  --surface: #181816;
+  --surface-raised: #20201d;
+  --surface-subtle: #141412;
+
+  --ink: #eeece8;
+  --ink-secondary: #aaa79e;
+  --ink-muted: #78756e;
+
+  --rule: #2a2a26;
+  --rule-strong: #403f39;
+  --rule-focus: #eeece8;
+
+  --series-1: #388bfd;
+  --series-2: #e36a2b;
+  --series-3: #2ea043;
+  --accent-wash: #17263c;
+
+  --good: #3fb950;
+  --warning: #d29922;
+  --serious: #f0883e;
+  --critical: #f85149;
 }
 
 * {
@@ -263,6 +276,65 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+/* ---------- main app navigation ---------- */
+
+.nav-tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--rule);
+  background: var(--plane);
+  padding: 8px 0 0;
+  overflow-x: auto;
+}
+
+.nav-tab {
+  appearance: none;
+  border: 1px solid transparent;
+  border-bottom: none;
+  background: transparent;
+  color: var(--ink-secondary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 550;
+  padding: 8px 16px;
+  border-radius: var(--r-panel) var(--r-panel) 0 0;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background var(--fast) var(--ease),
+    color var(--fast) var(--ease);
+}
+
+.nav-tab:hover {
+  color: var(--ink);
+  background: var(--surface-subtle);
+}
+
+.nav-tab[aria-selected="true"] {
+  background: var(--surface);
+  color: var(--ink);
+  border-color: var(--rule);
+  border-bottom-color: var(--surface);
+  margin-bottom: -1px;
+}
+
+.tab-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: var(--r-mark);
+  background: var(--surface-subtle);
+  border: 1px solid var(--rule);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-muted);
+}
+
+.nav-tab[aria-selected="true"] .tab-badge {
+  background: var(--plane);
+  color: var(--ink-secondary);
 }
 
 /* ---------- buttons ---------- */
@@ -1364,6 +1436,515 @@ tbody tr:hover .chip[data-on="true"] {
   margin: 0 0 10px;
   font-size: 14px;
   font-weight: 600;
+}
+
+/* ---------- Investigation Panel / Modal ---------- */
+.investigation-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(18, 17, 15, 0.45);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.investigation-drawer {
+  width: 580px;
+  max-width: 100vw;
+  height: 100vh;
+  background: var(--surface);
+  border-left: 1px solid var(--rule-strong);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.drawer-header {
+  padding: 16px 20px;
+  background: var(--surface-raised);
+  border-bottom: 1px solid var(--rule);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.drawer-header h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.drawer-content {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  background: var(--surface-raised);
+  padding: 14px;
+  border: 1px solid var(--rule);
+  border-radius: var(--r-panel);
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.info-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  letter-spacing: 0.05em;
+}
+
+.info-val {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--ink);
+}
+
+.score-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border: 1px solid var(--rule);
+  border-radius: var(--r-panel);
+  background: var(--surface-raised);
+}
+
+.score-display {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.score-num {
+  font-family: var(--mono);
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+}
+
+.reasons-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.reason-card {
+  padding: 10px 12px;
+  background: var(--surface-raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-panel);
+  font-size: 12.5px;
+}
+
+.reason-meta {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-muted);
+  margin-bottom: 4px;
+}
+
+.reason-contrib {
+  font-weight: 600;
+}
+
+.reason-contrib.increases {
+  color: var(--serious);
+}
+
+.reason-contrib.decreases {
+  color: var(--good);
+}
+
+.investigation-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+/* ---------- Model Intelligence & Architecture Page ---------- */
+.doc-section {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-panel);
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.doc-section h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.doc-section p {
+  color: var(--ink-secondary);
+  line-height: 1.6;
+  margin: 0 0 16px;
+}
+
+.engine-spec-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.engine-spec-box {
+  background: var(--surface-raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-panel);
+  padding: 16px;
+}
+
+.engine-spec-box h4 {
+  margin: 0 0 6px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.engine-spec-box p {
+  font-size: 12.5px;
+  color: var(--ink-secondary);
+  margin: 0 0 10px;
+  line-height: 1.5;
+}
+
+.spec-badge {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  background: var(--surface-subtle);
+  border: 1px solid var(--rule);
+  padding: 2px 6px;
+  border-radius: var(--r-mark);
+  color: var(--ink-secondary);
+  display: inline-block;
+}
+
+/* ---------- System Configuration Tab ---------- */
+.sys-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+.sys-card {
+  background: var(--surface-raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-panel);
+  padding: 14px 16px;
+}
+
+.sys-card dt {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+.sys-card dd {
+  font-family: var(--mono);
+  font-size: 13.5px;
+  color: var(--ink);
+  margin: 0;
+}
+
+.api-key-form {
+  margin-top: 14px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.api-key-form input {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  padding: 7px 12px;
+  background: var(--surface-raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-panel);
+  color: var(--ink);
+  flex: 1;
+  max-width: 320px;
+}
+
+/* ---------- Form Controls & Table Search ---------- */
+.table-search-input {
+  font-family: var(--font);
+  font-size: 12.5px;
+  padding: 6px 12px;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-panel);
+  color: var(--ink);
+  width: 220px;
+}
+
+.table-search-input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+tr.clickable-row {
+  cursor: pointer;
+  transition: background var(--fast) var(--ease);
+}
+
+tr.clickable-row:hover {
+  background: var(--surface-subtle) !important;
+}
+
+.inspect-btn {
+  appearance: none;
+  border: 1px solid var(--rule);
+  background: var(--surface-raised);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: var(--r-mark);
+  cursor: pointer;
+  transition: all var(--fast) var(--ease);
+}
+
+.inspect-btn:hover {
+  border-color: var(--rule-strong);
+  background: var(--surface-subtle);
+}
+
+/* ---------- Scoring Form Grid ---------- */
+.scoring-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.form-field label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-muted);
+}
+
+.form-field input,
+.form-field select {
+  font-family: var(--mono);
+  font-size: 13px;
+  padding: 7px 10px;
+  background: var(--surface-raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-panel);
+  color: var(--ink);
+}
+
+.form-field select {
+  font-family: var(--font);
+}
+
+.preset-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.preset-label {
+  font-size: 11.5px;
+  color: var(--ink-muted);
+  font-weight: 550;
+}
+
+.preset-chip {
+  appearance: none;
+  background: var(--surface-subtle);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-pill);
+  font-size: 11.5px;
+  padding: 4px 10px;
+  color: var(--ink-secondary);
+  cursor: pointer;
+  transition: all var(--fast) var(--ease);
+}
+
+.preset-chip:hover {
+  color: var(--ink);
+  border-color: var(--rule-strong);
+  background: var(--surface-raised);
+}
+
+/* ---------- AI Fraud Analyst Console ---------- */
+.analyst-console {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 520px;
+}
+
+.analyst-meta-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-panel);
+}
+
+.analyst-chat-history {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-height: 560px;
+  overflow-y: auto;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-panel);
+}
+
+.analyst-msg {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 85%;
+}
+
+.analyst-msg.user {
+  align-self: flex-end;
+  background: var(--surface-raised);
+  border: 1px solid var(--rule-strong);
+  padding: 10px 14px;
+  border-radius: var(--r-panel);
+}
+
+.analyst-msg.ai {
+  align-self: flex-start;
+  background: var(--surface-raised);
+  border: 1px solid var(--rule);
+  padding: 14px 18px;
+  border-radius: var(--r-panel);
+  width: 100%;
+  max-width: 100%;
+}
+
+.msg-sender-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: var(--ink-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 2px;
+}
+
+.evidence-disclosure {
+  margin-top: 10px;
+  border-top: 1px dashed var(--rule);
+  padding-top: 8px;
+}
+
+.evidence-summary {
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-muted);
+  user-select: none;
+}
+
+.evidence-summary:hover {
+  color: var(--ink);
+}
+
+.evidence-box {
+  margin-top: 8px;
+  padding: 10px;
+  background: var(--surface-subtle);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-mark);
+  font-family: var(--mono);
+  font-size: 11px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  color: var(--ink-secondary);
+}
+
+/* ---------- Metric & Cost Tables ---------- */
+.metrics-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+}
+
+.metrics-table th,
+.metrics-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--rule);
+  font-size: 12.5px;
+  text-align: left;
+}
+
+.metrics-table th {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-muted);
+}
+
+.metrics-table td.num,
+.metrics-table th.num {
+  text-align: right;
+  font-family: var(--mono);
+}
+
+.cost-callout {
+  padding: 14px 18px;
+  background: var(--surface-subtle);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--r-panel) var(--r-panel) 0;
+  margin: 14px 0;
+  font-size: 13px;
+  line-height: 1.55;
 }
 
 /* Everything above collapses here. Infinite loops stop, entry animations
