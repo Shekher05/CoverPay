@@ -271,10 +271,10 @@ def upload_csv_batch(file: UploadFile = File(...)) -> BatchAnalysisOut:
     # comes from the multipart part; the capped read is the real guard when it
     # is absent or understated.
     if file.size is not None and file.size > MAX_CSV_BYTES:
-        raise HTTPException(status_code=413, detail="CSV exceeds the 10 MB limit")
+        raise HTTPException(status_code=413, detail=f"CSV exceeds the {MAX_CSV_BYTES // (1024 * 1024)} MB limit")
     content = file.file.read(MAX_CSV_BYTES + 1)
     if len(content) > MAX_CSV_BYTES:
-        raise HTTPException(status_code=413, detail="CSV exceeds the 10 MB limit")
+        raise HTTPException(status_code=413, detail=f"CSV exceeds the {MAX_CSV_BYTES // (1024 * 1024)} MB limit")
 
     try:
         df = pd.read_csv(io.BytesIO(content))
