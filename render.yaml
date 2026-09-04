@@ -1,0 +1,76 @@
+# Render Blueprint for CoverPay - one PostgreSQL database, one FastAPI web
+# service, one static frontend. Deploy with: Render Dashboard -> New -> Blueprint,
+# point at this repo. See DEPLOY.md for the manual dashboard equivalent and the
+# one-time database seeding step.
+#
+# The two service URLs reference each other (CORS_ORIGINS <-> VITE_API_BASE).
+# Render derives them from the service names below as https://<name>.onrender.com.
+# If a name is already taken globally Render appends a suffix - if that happens,
+# fix the two hard-coded URLs here (and in the dashboard) and redeploy.
+
+databases:
+  - name: coverpay-db
+    plan: free            # free Postgres expires ~90 days; upgrade or re-seed
+    databaseName: coverpay
+    user: coverpay
+
+services:
+  # ---- Backend: FastAPI on Render's native Python runtime ----
+  - type: web
+    name: coverpay-api
+    runtime: python
+    plan: free            # free web services sleep after 15 min idle (~40s cold start)
+    rootDir: backend
+    # Editable install on purpose: config.py resolves ROOT from its own __file__,
+    # so it must stay in backend/ rather than being copied into site-packages.
+    buildCommand: pip install -e .
+    startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT --workers 1
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: ENVIRONMENT
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: coverpay-db
+          property: connectionString
+      - key: CORS_ORIGINS
+        value: https://coverpay-web.onrender.com
+      - key: RATE_LIMIT_PER_MINUTE
+        value: "30"
+      # Gates /transactions/score and /transactions/upload-csv. Auto-generated;
+      # read it from the Render dashboard to use those endpoints from the UI
+      # (paste into the app's System settings panel). The assistant and the
+      # dashboard do NOT need it.
+      - key: API_KEY
+        generateValue: true
+      # Set this yourself in the dashboard - never commit it. Without it the
+      # assistant returns 503 with a clear message; everything else still works.
+      - key: OPENROUTER_API_KEY
+        sync: false
+
+  # ---- Frontend: static build served by Render's CDN ----
+  - type: web
+    name: coverpay-web
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    envVars:
+      # Baked into the bundle at build time. Not a secret.
+      - key: VITE_API_BASE
+        value: https://coverpay-api.onrender.com
+    routes:
+      # SPA fallback so a deep link / refresh returns index.html, not 404.
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    headers:
+      # frame-ancestors can't be set from a <meta> CSP, so pin framing here.
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff

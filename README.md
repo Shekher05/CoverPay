@@ -15,7 +15,7 @@ Short version: **one API key**. Everything else is already in place or generated
 | # | Item | Needed for | Status |
 |---|---|---|---|
 | 1 | IEEE-CIS dataset | training, simulator templates | **already present** in `ieee-fraud-detection/` |
-| 2 | `Ai_API_KEY` | the AI merchant helper only | **you need to supply this** |
+| 2 | `OPENROUTER_API_KEY` | the AI merchant helper only | **you need to supply this** |
 | 3 | Python 3.11+ / Node 18+ | everything | already installed here |
 
 Nothing else. No cloud account, no Razorpay credentials, no database server, no
@@ -38,17 +38,18 @@ It is git-ignored and never committed.
 
 If you move it, set `DATA_DIR` in `.env` to the new location.
 
-### 2. The Ai API key (the only missing piece)
+### 2. The AI API key (the only missing piece)
 
 Only the AI merchant helper needs this. Without it **every other feature works**;
 the assistant returns HTTP 503 with a clear message rather than inventing an answer.
 
-Genenrate API key for AI assistanat and Put it in `.env` at the repository root:
+The assistant calls [OpenRouter](https://openrouter.ai/keys) (OpenAI-compatible).
+Generate a key and put it in `.env` at the repository root:
 
 ```bash
 cp .env.example .env
 # then edit .env and set:
-AI_API_KEY=sk-ant-...
+OPENROUTER_API_KEY=sk-or-v1-...
 ```
 
 
@@ -120,7 +121,7 @@ npm install
 
 # 3. Secrets
 cd ..
-cp .env.example .env        # then add ANTHROPIC_API_KEY if you want the assistant
+cp .env.example .env        # then add OPENROUTER_API_KEY if you want the assistant
 ```
 
 ---

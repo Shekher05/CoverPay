@@ -4,11 +4,16 @@ data/
 *.parquet
 *.zip
 
-# Model artifacts
-models/
+# Model artifacts. `models/*` (not `models/`) so the two files below can be
+# re-included - git will not descend into a fully-ignored directory.
+models/*
 *.pkl
 *.joblib
 *.json.model
+# The two artifacts the API needs at runtime are committed so a git-based deploy
+# (Render) serves without a training run. ~9 MB total.
+!models/fraud_xgb.json
+!models/feature_spec.json
 
 # Python
 __pycache__/
@@ -18,6 +23,18 @@ venv/
 *.egg-info/
 .pytest_cache/
 .ipynb_checkpoints/
+
+# Test, lint & build artifacts
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.mypy_cache/
+.ruff_cache/
+.tox/
+build/
+dist/
+*.log
 
 # Env & secrets
 .env
@@ -36,10 +53,14 @@ CLAUDE.md
 coverpay.db-shm
 ieee-fraud-detection/
 coverpay.db-wal
-
+DEPLOY.md
+backend\.python-version
 # Local database
 *.db
 *.sqlite3
+*.db-shm
+*.db-wal
+*.db-journal
 
 # Synthetic data (generated, reproducible from a seed)
 data/synthetic/

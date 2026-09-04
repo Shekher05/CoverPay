@@ -13,23 +13,32 @@ import react from "@vitejs/plugin-react";
 //   injected at build time only - see the plugin below.
 // - style-src keeps 'unsafe-inline': low risk, and Vite / a runtime can still
 //   emit a <style> tag or inline style attribute.
-// - connect-src 'self' assumes the API is same-origin. If you split the frontend
-//   and backend onto different hosts (VITE_API_BASE), add that origin here.
+// - connect-src is 'self' plus the API origin when the backend is on a different
+//   host (VITE_API_BASE, the Render Static Site + Web Service split). Derived
+//   from the same env var api.js uses, so the two never drift.
 // - frame-ancestors is ignored in a <meta> CSP; also set X-Frame-Options or a
 //   real CSP header at the static host for clickjacking protection.
-const PROD_CSP = [
-  "default-src 'self'",
-  "base-uri 'none'",
-  "object-src 'none'",
-  "script-src 'self'",
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data:",
-  "font-src 'self'",
-  "connect-src 'self'",
-  "form-action 'self'",
-  "frame-ancestors 'none'",
-  "upgrade-insecure-requests",
-].join("; ");
+function buildProdCsp() {
+  let apiOrigin = "";
+  try {
+    if (process.env.VITE_API_BASE) apiOrigin = new URL(process.env.VITE_API_BASE).origin;
+  } catch {
+    // not a full URL (e.g. "/api") - stays same-origin, nothing to add
+  }
+  return [
+    "default-src 'self'",
+    "base-uri 'none'",
+    "object-src 'none'",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data:",
+    "font-src 'self'",
+    `connect-src 'self'${apiOrigin ? " " + apiOrigin : ""}`,
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    "upgrade-insecure-requests",
+  ].join("; ");
+}
 
 // /api is proxied to FastAPI so the browser sees one origin in development.
 export default defineConfig({
@@ -45,7 +54,7 @@ export default defineConfig({
           if (ctx.server) return html;
           return html.replace(
             "</head>",
-            `  <meta http-equiv="Content-Security-Policy" content="${PROD_CSP}" />\n  </head>`,
+            `  <meta http-equiv="Content-Security-Policy" content="${buildProdCsp()}" />\n  </head>`,
           );
         },
       },

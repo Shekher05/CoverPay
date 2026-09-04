@@ -59,21 +59,25 @@ async def lifespan(app: FastAPI):
     yield
 
 
+# Interactive docs are handy locally and pointless attack surface in production.
+_docs = {"docs_url": None, "redoc_url": None, "openapi_url": None} if (
+    settings.environment == "production"
+) else {}
+
 app = FastAPI(
     title="CoverPay Fraud Intelligence",
     description="Advisory transaction fraud scoring. Does not block payments.",
     version=settings.model_version,
     lifespan=lifespan,
+    **_docs,
 )
 
-# The Vite dev server runs on its own origin. Localhost only, and explicitly
-# listed rather than "*", so this cannot quietly become a production hole.
+# Allowed browser origins come from CORS_ORIGINS (see config.py) - the Vite dev
+# server by default, the Render Static Site URL in production. Explicit list,
+# never "*", so it cannot quietly become a production hole.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ],
+    allow_origins=settings.cors_origins_list,
     allow_methods=["GET", "POST"],
     # X-API-Key so a browser client can authenticate once API_KEY is set; the
     # preflight would otherwise strip it.
@@ -87,8 +91,8 @@ app.include_router(dashboard.router)
 async def security_headers(request: Request, call_next):
     """Baseline hardening headers on every response. The API returns only JSON,
     so it is never a framing or script-execution surface itself - these matter
-    for the error pages, /docs, and defence in depth. A strict CSP is set on the
-    frontend document (frontend/index.html), not here, since /docs needs its own.
+    for the error pages, /docs, and defence in depth. The frontend document gets
+    its own strict CSP at build time (frontend/vite.config.js), not from here.
     """
     response = await call_next(request)
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
@@ -146,7 +150,10 @@ def _to_response(assessment: RiskAssessment, transaction_id: str) -> AssessmentO
 @app.post(
     "/transactions/score",
     response_model=AssessmentOut,
-    dependencies=[Depends(require_api_key)],
+    # Writes a row and spends model time: key-gated when API_KEY is set, and
+    # rate-limited regardless so a leaked key or an open deployment cannot be
+    # used to flood the database.
+    dependencies=[Depends(require_api_key), Depends(rate_limit)],
 )
 def score_transaction(
     payload: TransactionIn, session: Session = Depends(get_session)
@@ -188,7 +195,11 @@ def score_transaction(
 @app.post(
     "/assistant/ask",
     response_model=AskOut,
-    dependencies=[Depends(require_api_key), Depends(rate_limit)],
+    # Deliberately NOT key-gated: the assistant is the interactive part of the
+    # public demo, so any visitor can ask. The guards against abuse are the
+    # per-visitor rate limit (see auth.rate_limit) and the OpenRouter key's own
+    # free-tier / spend cap. Add Depends(require_api_key) here to make it private.
+    dependencies=[Depends(rate_limit)],
 )
 def assistant_ask(payload: AskIn, session: Session = Depends(get_session)) -> AskOut:
     """Explain stored fraud evidence in plain language.

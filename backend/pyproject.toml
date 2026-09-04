@@ -13,8 +13,9 @@ dependencies = [
     "pydantic",
     "pydantic-settings",
     "sqlalchemy",
+    "psycopg2-binary",  # PostgreSQL driver for the Render deployment; sqlite needs no driver
     "python-dotenv",
-    "google-genai",
+    "openai",  # OpenRouter is OpenAI-compatible; the assistant talks to it through this SDK
     "python-multipart",
 ]
 

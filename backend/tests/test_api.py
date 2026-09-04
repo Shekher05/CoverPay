@@ -91,6 +91,27 @@ def test_responses_carry_security_headers(client):
     assert h["referrer-policy"] == "no-referrer"
 
 
+def test_assistant_is_public_even_with_api_key(client, monkeypatch):
+    """The assistant is the interactive part of the public demo: setting API_KEY
+    must not lock visitors out of it (it stays rate-limited instead)."""
+    from api.assistant import AssistantUnavailable
+
+    monkeypatch.setattr("config.settings.api_key", "s3cret")
+
+    def unavailable(*_a, **_k):
+        raise AssistantUnavailable("no creds")
+
+    monkeypatch.setattr("api.main.ask", unavailable)
+    # 503 means the request reached the handler - it was not turned away at 401.
+    assert client.post("/assistant/ask", json={"question": "hi"}).status_code == 503
+
+
+def test_score_requires_key_when_configured(client, monkeypatch):
+    """Writing endpoints stay gated once API_KEY is set."""
+    monkeypatch.setattr("config.settings.api_key", "s3cret")
+    assert client.post("/transactions/score", json=VALID).status_code == 401
+
+
 def test_client_ip_keys_on_forwarded_for():
     """Rate limiting must bucket per real visitor, not per shared proxy IP."""
     from api.auth import _client_ip
@@ -144,7 +165,7 @@ def test_assistant_route_maps_unavailable_to_503(client, monkeypatch):
     from api.assistant import AssistantUnavailable
 
     def unavailable(*_a, **_k):
-        raise AssistantUnavailable("No Gemini credentials found.")
+        raise AssistantUnavailable("No OpenRouter credentials found.")
 
     monkeypatch.setattr("api.main.ask", unavailable)
     response = client.post("/assistant/ask", json={"question": "what happened?"})

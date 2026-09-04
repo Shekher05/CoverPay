@@ -1,6 +1,6 @@
 """Tests for the AI merchant helper.
 
-These never call the Gemini API. What matters here is the grounding layer,
+These never call the model API. What matters here is the grounding layer,
 and that is pure SQL: if a figure is not in the context, the model has no
 legitimate way to produce it. Testing the prose would cost money and prove
 little; testing the evidence proves the boundary holds.
@@ -175,7 +175,7 @@ def test_missing_credentials_raise_assistant_unavailable(populated, monkeypatch)
     import api.assistant as assistant
 
     def no_client():
-        raise AssistantUnavailable("No Gemini credentials found.")
+        raise AssistantUnavailable("No OpenRouter credentials found.")
 
     monkeypatch.setattr(assistant, "_client", no_client)
 
@@ -184,28 +184,38 @@ def test_missing_credentials_raise_assistant_unavailable(populated, monkeypatch)
 
 
 def _fake_client(raises=None, text=None):
-    """A stand-in shaped like google-genai's client, so no request is made."""
+    """A stand-in shaped like the OpenAI SDK client, so no request is made."""
 
-    class Models:
+    class Completions:
         @staticmethod
-        def generate_content(**_):
+        def create(**_):
             if raises is not None:
                 raise raises
-            return type("Response", (), {"text": text})()
+            message = type("Msg", (), {"content": text})()
+            choice = type("Choice", (), {"message": message})()
+            return type("Completion", (), {"choices": [choice]})()
 
-    return type("Client", (), {"models": Models()})()
+    chat = type("Chat", (), {"completions": Completions()})()
+    return type("Client", (), {"chat": chat})()
+
+
+def _status_error(code: int):
+    """A real openai.APIStatusError with the given HTTP status."""
+    import httpx
+    from openai import APIStatusError
+
+    request = httpx.Request("POST", "https://openrouter.ai/api/v1/chat/completions")
+    return APIStatusError(f"HTTP {code}", response=httpx.Response(code, request=request), body=None)
 
 
 def test_api_rejection_reads_as_unavailable_not_as_an_answer(populated, monkeypatch):
-    """A bad or exhausted key is an operational problem the operator can fix.
-    It must never degrade into invented prose."""
+    """A bad or exhausted key (4xx) is an operational problem the operator can
+    fix. It must never degrade into invented prose."""
     import api.assistant as assistant
-    from google.genai import errors
 
-    rejection = errors.ClientError(
-        400, {"error": {"message": "API key not valid", "status": "INVALID_ARGUMENT"}}
+    monkeypatch.setattr(
+        assistant, "_client", lambda: _fake_client(raises=_status_error(400))
     )
-    monkeypatch.setattr(assistant, "_client", lambda: _fake_client(raises=rejection))
 
     with pytest.raises(AssistantUnavailable, match="rejected"):
         ask("what happened?", populated)
@@ -213,10 +223,10 @@ def test_api_rejection_reads_as_unavailable_not_as_an_answer(populated, monkeypa
 
 def test_upstream_outage_reads_as_unavailable(populated, monkeypatch):
     import api.assistant as assistant
-    from google.genai import errors
 
-    outage = errors.ServerError(503, {"error": {"message": "overloaded"}})
-    monkeypatch.setattr(assistant, "_client", lambda: _fake_client(raises=outage))
+    monkeypatch.setattr(
+        assistant, "_client", lambda: _fake_client(raises=_status_error(503))
+    )
 
     with pytest.raises(AssistantUnavailable, match="unavailable"):
         ask("what happened?", populated)

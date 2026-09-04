@@ -1,8 +1,10 @@
 // Frontend API layer for CoverPay Fraud Intelligence.
-// All requests are relative to /api, proxied by Vite to the FastAPI backend.
-// Supports optional X-API-Key configuration stored in localStorage or environment.
-
-const BASE = "/api";
+//
+// Local dev: BASE is "/api", which vite.config.js proxies to the FastAPI process.
+// Production (Render Static Site): set VITE_API_BASE to the backend Web Service
+// URL, e.g. https://coverpay-api.onrender.com - it is baked in at build time.
+// A base URL is not a secret; real secrets stay in Render's backend env.
+const BASE = (import.meta.env.VITE_API_BASE || "/api").replace(/\/+$/, "");
 
 export function getStoredApiKey() {
   try {

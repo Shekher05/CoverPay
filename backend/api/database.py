@@ -36,7 +36,15 @@ _is_sqlite = settings.database.startswith("sqlite")
 # short once the simulator writes while the API serves. Other backends ignore
 # both.
 connect_args = {"check_same_thread": False, "timeout": 30} if _is_sqlite else {}
-engine = create_engine(settings.database, connect_args=connect_args)
+# pool_pre_ping: managed Postgres (Render) silently drops idle connections, so
+# check liveness before handing one out rather than failing the request.
+# pool_recycle: retire a connection after 5 min so we never hit that drop.
+engine = create_engine(
+    settings.database,
+    connect_args=connect_args,
+    pool_pre_ping=not _is_sqlite,
+    pool_recycle=-1 if _is_sqlite else 300,
+)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
 
